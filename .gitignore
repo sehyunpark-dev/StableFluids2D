@@ -1,9 +1,9 @@
 build/
+CMakeFiles/
+.vscode/
 *.exe
 *.dll
 *.so
 *.dylib
 *.o
 *.obj
-
-.vscode/

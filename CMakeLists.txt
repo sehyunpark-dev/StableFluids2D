@@ -13,11 +13,7 @@ set(PROJECT_LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 add_executable(StableFluids2D ${PROJECT_SOURCE_DIR}/main.cpp)
 
 target_include_directories(StableFluids2D PRIVATE 
-    ${PROJECT_INCLUDE_DIR}
-    ${PROJECT_SOURCE_DIR}/solver
-    ${PROJECT_SOURCE_DIR}/renderer
-    ${PROJECT_SOURCE_DIR}/utils
-    ${PROJECT_SOURCE_DIR}/grid)
+    ${PROJECT_INCLUDE_DIR})
 
 target_link_libraries(StableFluids2D PRIVATE
     glfw3
@@ -31,6 +27,7 @@ target_link_libraries(StableFluids2D PRIVATE
 target_link_directories(StableFluids2D PRIVATE ${PROJECT_LIB_DIR})
 
 find_package(OpenGL REQUIRED)
+
 if(OpenMP_FOUND)
     message(STATUS "OpenMP found, enabling OpenMP support")
     target_compile_options(StableFluids2D PRIVATE ${OpenMP_CXX_FLAGS})
