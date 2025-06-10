@@ -1,41 +1,21 @@
-#include <GLFW/glfw3.h>
-#include <iostream>
+#include "MACGrid2D.h"
+#include "Renderer2D.h"
 
 // Test
 int main()
 {
-    // 1. Initialize GLFW
-    if (!glfwInit())
-    {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
-    }
-
-    // 2. Create a windowed mode window and its OpenGL context
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Stable Fluids 2D", nullptr, nullptr);
-    if (!window)
-    {
-        std::cerr << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-
-    // 3. Make the window's context current
-    glfwMakeContextCurrent(window);
-
-    // 4. Main loop
+    MACGrid2D *grid     = new MACGrid2D(128, 0.01);
+    Renderer2D renderer = Renderer2D(800, 600, grid);
+    
+    renderer.initialize();
+    GLFWwindow* window = renderer.getWindow();
+    
     while (!glfwWindowShouldClose(window))
     {
-        // Render here
-
-        // Swap buffers
-        glfwSwapBuffers(window);
-
-        // Poll for and process events
-        glfwPollEvents();
+        renderer.render();
     }
 
-    // 5. Clean up and exit
-    glfwTerminate();
+    renderer.cleanup();
+    delete grid;
     return 0;
 }

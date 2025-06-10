@@ -1,5 +1,9 @@
 build/
 CMakeFiles/
+CMakeCache.txt
+*.cmake
+Makefile
+cmake_install.cmake
 .vscode/
 *.exe
 *.dll

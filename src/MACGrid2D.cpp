@@ -1,22 +1,64 @@
-#include <iostream>
+#include "MACGrid2D.h"
 
-#include <MACGrid2D.h>
-
-MACGrid2D::MACGrid2D(
-    int res_x, int res_y, double cell_size) : 
-        res_x_(res_x), res_y_(res_y), cell_size_(cell_size)
+MACGrid2D::MACGrid2D(int res, float cell_size) : res_(res), cell_size_(cell_size)
 {
     // Initialize the grid parameters
-    u_.resize((res_x_ + 1) * res_y_, 0.0);
-    v_.resize(res_x_ * (res_y_ + 1), 0.0);
-    p_.resize(res_x_ * res_y_, 0.0);
+    u_.resize((res_ + 1) * res_, 0.0);
+    v_.resize(res_ * (res_ + 1), 0.0);
+    p_.resize(res_ * res_, 0.0);
+    cell_coord_.resize(res_ * res_, glm::vec2(0.0, 0.0));
+    
+    float center_idx = (res_ - 1) / 2.0f;
+    for (int i = 0; i < res_; i++)
+    {
+        for (int j = 0; j < res_; j++)
+        {
+            float y = (center_idx - i) * cell_size;
+            float x = (j - center_idx) * cell_size;
+            cell_coord_[i * res_ + j] = glm::vec2(x, y);
+        }
+    }
 }
+
+int MACGrid2D::getRes() const
+{
+    return res_;
+}
+
+float MACGrid2D::getCellSize() const
+{
+    return cell_size_;
+}
+
+glm::vec2 MACGrid2D::getGridCenter() const
+{
+    return grid_center_;
+}
+
+std::vector<glm::vec2> MACGrid2D::getCellCoord() const
+{
+    return cell_coord_;
+}
+
+glm::vec2 MACGrid2D::getCellCoord(int i, int j) const
+{
+    if (0 <= i && i < res_ && 0 <= j && j < res_)
+    {
+        return cell_coord_[i * res_ + j];
+    }
+    else
+    {
+        std::cerr << "[Error] Invalid cell coordinate index" << std::endl;
+        return glm::vec2(-1.0f, -1.0f);
+    }
+}
+
 
 double MACGrid2D::getU(int i, int j) const
 {
-    if (0 <= i && i < (res_x_ + 1) && 0 <= j && j < res_y_)
+    if (0 <= i && i < res_ && 0 <= j && j < (res_ + 1))
     {
-        return u_[i + j * (res_x_ + 1)];
+        return u_[i * (res_ + 1) + j];
     }
     else
     {
@@ -27,9 +69,9 @@ double MACGrid2D::getU(int i, int j) const
 
 double MACGrid2D::getV(int i, int j) const
 {
-    if (0 <= i && i < res_x_ && 0 <= j && j < (res_y_ + 1))
+    if (0 <= i && i < (res_ + 1) && 0 <= j && j < res_)
     {
-        return v_[i + j * res_x_];
+        return v_[i * res_ + j];
     }
     else
     {
@@ -40,9 +82,9 @@ double MACGrid2D::getV(int i, int j) const
 
 double MACGrid2D::getP(int i, int j) const
 {
-    if (0 <= i && i < res_x_ && 0 <= j && j < res_y_)
+    if (0 <= i && i < res_ && 0 <= j && j < res_)
     {
-        return p_[i + j * res_x_];
+        return p_[i * res_ + j];
     }
     else
     {
@@ -53,9 +95,9 @@ double MACGrid2D::getP(int i, int j) const
 
 void MACGrid2D::setU(int i, int j, double val)
 {
-    if (0 <= i && i < (res_x_ + 1) && 0 <= j && j < res_y_)
+    if (0 <= i && i < res_ && 0 <= j && j < (res_ + 1))
     {
-        u_[i + j * (res_x_ + 1)] = val;
+        u_[i * (res_ + 1) + j] = val;
     }
     else
     {
@@ -65,9 +107,9 @@ void MACGrid2D::setU(int i, int j, double val)
 
 void MACGrid2D::setV(int i, int j, double val)
 {
-    if (0 <= i && i < res_x_ && 0 <= j && j < (res_y_ + 1))
+    if (0 <= i && i < (res_ + 1) && 0 <= j && j < res_)
     {
-        v_[i + j * res_x_] = val;
+        v_[i * res_ + j] = val;
     }
     else
     {
@@ -77,9 +119,9 @@ void MACGrid2D::setV(int i, int j, double val)
 
 void MACGrid2D::setP(int i, int j, double val)
 {
-    if (0 <= i && i < res_x_ && 0 <= j && j < res_y_)
+    if (0 <= i && i < res_ && 0 <= j && j < res_)
     {
-        p_[i + j * res_x_] = val;
+        p_[i * res_ + j] = val;
     }
     else
     {
