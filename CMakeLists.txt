@@ -14,7 +14,8 @@ add_executable(StableFluids2D
     ${PROJECT_SOURCE_DIR}/main.cpp
     ${PROJECT_SOURCE_DIR}/MACGrid2D.cpp
     ${PROJECT_SOURCE_DIR}/Renderer2D.cpp
-    ${PROJECT_SOURCE_DIR}/utils.cpp)
+    ${PROJECT_SOURCE_DIR}/utils.cpp
+    ${PROJECT_SOURCE_DIR}/Solver.cpp)
 
 target_include_directories(StableFluids2D PRIVATE 
     ${PROJECT_INCLUDE_DIR}

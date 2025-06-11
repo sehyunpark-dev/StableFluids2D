@@ -3,10 +3,7 @@
 MACGrid2D::MACGrid2D(int res, float cell_size) : res_(res), cell_size_(cell_size)
 {
     // Initialize the grid parameters
-    u_.resize((res_ + 1) * res_, 0.0);
-    v_.resize(res_ * (res_ + 1), 0.0);
-    p_.resize(res_ * res_, 0.0);
-    cell_coord_.resize(res_ * res_, glm::vec2(0.0, 0.0));
+    cell_coord_.resize(res_ * res_, glm::vec2(0.0f, 0.0f));
     
     float center_idx = (res_ - 1) / 2.0f;
     for (int i = 0; i < res_; i++)
@@ -40,11 +37,11 @@ std::vector<glm::vec2> MACGrid2D::getCellCoord() const
     return cell_coord_;
 }
 
-glm::vec2 MACGrid2D::getCellCoord(int i, int j) const
+glm::vec2 MACGrid2D::getCellCoord(int x, int y) const
 {
-    if (0 <= i && i < res_ && 0 <= j && j < res_)
+    if (0 <= y && y < res_ && 0 <= x && x < res_)
     {
-        return cell_coord_[i * res_ + j];
+        return cell_coord_[y * res_ + x];
     }
     else
     {
@@ -53,78 +50,20 @@ glm::vec2 MACGrid2D::getCellCoord(int i, int j) const
     }
 }
 
-
-double MACGrid2D::getU(int i, int j) const
+int MACGrid2D::getCellIndex(const glm::vec2 &coord) const
 {
-    if (0 <= i && i < res_ && 0 <= j && j < (res_ + 1))
+    glm::vec2 temp_coord = coord + glm::vec2(res_ / 2.0f * cell_size_, res_ / 2.0f * cell_size_);
+    
+    int x = static_cast<int>(temp_coord.x / cell_size_);
+    int y = static_cast<int>(temp_coord.y / cell_size_);
+
+    if (0 <= y && y < res_ && 0 <= x && x < res_)
     {
-        return u_[i * (res_ + 1) + j];
+        return y * res_ + x;
     }
     else
     {
-        std::cerr << "[Error] Invalid U index" << std::endl;
-        return -1;
-    }
-}
-
-double MACGrid2D::getV(int i, int j) const
-{
-    if (0 <= i && i < (res_ + 1) && 0 <= j && j < res_)
-    {
-        return v_[i * res_ + j];
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid V index" << std::endl;
-        return -1;
-    }
-}
-
-double MACGrid2D::getP(int i, int j) const
-{
-    if (0 <= i && i < res_ && 0 <= j && j < res_)
-    {
-        return p_[i * res_ + j];
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid Pressure index" << std::endl;
-        return -1;
-    }
-}
-
-void MACGrid2D::setU(int i, int j, double val)
-{
-    if (0 <= i && i < res_ && 0 <= j && j < (res_ + 1))
-    {
-        u_[i * (res_ + 1) + j] = val;
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid U index" << std::endl;
-    }
-}
-
-void MACGrid2D::setV(int i, int j, double val)
-{
-    if (0 <= i && i < (res_ + 1) && 0 <= j && j < res_)
-    {
-        v_[i * res_ + j] = val;
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid V index" << std::endl;
-    }
-}
-
-void MACGrid2D::setP(int i, int j, double val)
-{
-    if (0 <= i && i < res_ && 0 <= j && j < res_)
-    {
-        p_[i * res_ + j] = val;
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid Pressure index" << std::endl;
+        std::cerr << "[Error] Invalid cell coordinate" << std::endl;
+        return -1; // Invalid index
     }
 }

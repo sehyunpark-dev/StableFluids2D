@@ -4,10 +4,11 @@
 // Test
 int main()
 {
-    MACGrid2D *grid         = new MACGrid2D(128, 0.01);
-    Renderer2D *renderer    = new Renderer2D(1024, 768, grid);
+    MACGrid2D *grid         = new MACGrid2D(128, 0.01f);
+    Solver *solver          = new Solver(grid, grid->getRes(), grid->getCellSize(), 0.03f);
+    Renderer2D *renderer    = new Renderer2D(800, 800, grid, solver);
     
-    renderer->initialize();
+    renderer->initRenderer();
     GLFWwindow* window = renderer->getWindow();
     
     while (!glfwWindowShouldClose(window))

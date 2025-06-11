@@ -2,32 +2,34 @@
 #define RENDERER_2D_H
 
 #include "MACGrid2D.h"
+#include "Solver.h"
 #include "utils.h"
 #include "GLFW/glfw3.h"
-
 
 class Renderer2D
 {
 private:
-    GLFWwindow* window_; // Pointer to the GLFW window
+    GLFWwindow *window_; // Pointer to the GLFW window
 
     int window_width_   = 800;  // Width of the rendering window
     int window_height_  = 600;  // Height of the rendering window
-    MACGrid2D* grid_;           // Pointer to the MACGrid2D instance
 
+    MACGrid2D *grid_;           // Pointer to the MACGrid2D instance
+    Solver  *solver_;           // Pointer to the Solver instance
+    
     CPU_Geometry grid_cpu_geom_; // Grid CPU geometry data
     GPU_Geometry grid_gpu_geom_; // Grid GPU geometry data
-    
 
 public:
-    Renderer2D(int width, int height, MACGrid2D *grid);
+    Renderer2D(int width, int height, MACGrid2D *grid, Solver *glNamedRenderbufferStorageMultisampleCoverageEXT);
     ~Renderer2D();
 
-    void initialize();
+    void initRenderer();
     void render();
     void cleanup();
 
-    GLFWwindow* getWindow(); // Getter for the GLFW window
+    // Getter for the GLFW window
+    GLFWwindow* getWindow();
 };
 
 #endif
