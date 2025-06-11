@@ -3,6 +3,17 @@
 #include <iostream>
 
 GPU_Geometry::GPU_Geometry() : vao_(0), vbo_position_(0), vbo_color_(0)
+{}
+
+GPU_Geometry::~GPU_Geometry()
+{
+    // Delete VAO and VBOs
+    glDeleteBuffers(1, &vbo_position_);
+    glDeleteBuffers(1, &vbo_color_);
+    glDeleteVertexArrays(1, &vao_);
+}
+
+void GPU_Geometry::initOpenGLResources()
 {
     // Initialize OpenGL buffers
     glGenVertexArrays(1, &vao_);
@@ -11,14 +22,6 @@ GPU_Geometry::GPU_Geometry() : vao_(0), vbo_position_(0), vbo_color_(0)
     // Create VBOs for positions and colors
     glGenBuffers(1, &vbo_position_);
     glGenBuffers(1, &vbo_color_);
-}
-
-GPU_Geometry::~GPU_Geometry()
-{
-    // Delete VAO and VBOs
-    glDeleteBuffers(1, &vbo_position_);
-    glDeleteBuffers(1, &vbo_color_);
-    glDeleteVertexArrays(1, &vao_);
 }
 
 void GPU_Geometry::uploadGeometry(const CPU_Geometry& cpu_geom)

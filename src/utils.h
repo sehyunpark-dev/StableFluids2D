@@ -22,6 +22,8 @@ public:
     GPU_Geometry();
     ~GPU_Geometry();
 
+    void initOpenGLResources(); // Initialize OpenGL resources
+
     void uploadGeometry(const CPU_Geometry& cpu_geom);  // Upload CPU geometry data to GPU
     void bindVAO() const;   // Bind the VAO for rendering
     void unbindVAO() const; // Unbind the VAO
