@@ -35,7 +35,7 @@ void Solver::initScene()
             {
                 // Set smoke density to 1.0 in the source area
                 smoke_density_[y * grid_res_ + x] = 1.0f;
-                std::cout << "Smoke density set at (" << x << ", " << y << ") to " << smoke_density_[y * grid_res_ + x] << " / real index: " << y * grid_res_ + x << std::endl;
+                // std::cout << "Smoke density set at (" << x << ", " << y << ") to " << smoke_density_[y * grid_res_ + x] << " / real index: " << y * grid_res_ + x << std::endl;
             }
         }
     }

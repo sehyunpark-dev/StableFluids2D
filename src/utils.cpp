@@ -44,6 +44,7 @@ void GPU_Geometry::uploadGeometry(const CPU_Geometry& cpu_geom)
         cpu_geom.color.data(), 
         GL_STATIC_DRAW);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     unbindVAO();

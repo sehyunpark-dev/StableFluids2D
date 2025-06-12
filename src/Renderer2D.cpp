@@ -1,5 +1,7 @@
 #include "Renderer2D.h"
 #include <iostream>
+#include <fstream>
+#include <sstream>
 
 Renderer2D::Renderer2D(int width, int height, MACGrid2D* grid, Solver *solver) : 
     window_width_(width), window_height_(height), 
@@ -35,6 +37,7 @@ void Renderer2D::initRenderer()
         exit(-1);
     }
 
+    // Set the background color
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
     // Initialize OpenGL resources (VAO, VBOs, etc.)
@@ -63,6 +66,63 @@ void Renderer2D::initRenderer()
     grid_gpu_geom_.uploadGeometry(grid_cpu_geom_);
 }
 
+void Renderer2D::initShader()
+{
+    // Read shader files
+    std::string vertex_shader_src = readShaderFile("../shader/vertex_shader.vert");
+    std::string fragment_shader_src = readShaderFile("../shader/fragment_shader.frag");
+
+    // Compile Vertex Shader
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    const char* vertex_src = vertex_shader_src.c_str();
+    glShaderSource(vertex_shader, 1, &vertex_src, nullptr);
+    glCompileShader(vertex_shader);
+
+    GLint success;
+
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        char info_log[512];
+        glGetShaderInfoLog(vertex_shader, 512, nullptr, info_log);
+        std::cerr << "Vertex Shader Compilation Failed:\n" << info_log << std::endl;
+        exit(-1);
+    }
+
+    // Compile Fragment Shader
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    const char* fragment_src = fragment_shader_src.c_str();
+    glShaderSource(fragment_shader, 1, &fragment_src, nullptr);
+    glCompileShader(fragment_shader);
+
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        char info_log[512];
+        glGetShaderInfoLog(fragment_shader, 512, nullptr, info_log);
+        std::cerr << "Fragment Shader Compilation Failed:\n" << info_log << std::endl;
+        exit(-1);
+    }
+
+    // Link Shaders into a Program
+    shader_program_ = glCreateProgram();
+    glAttachShader(shader_program_, vertex_shader);
+    glAttachShader(shader_program_, fragment_shader);
+    glLinkProgram(shader_program_);
+    
+    glGetProgramiv(shader_program_, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        char info_log[512];
+        glGetProgramInfoLog(shader_program_, 512, nullptr, info_log);
+        std::cerr << "Shader Program Linking Failed:\n" << info_log << std::endl;
+        exit(-1);
+    }
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+}
+
 void Renderer2D::render()
 {
     // Clear the screen
@@ -88,11 +148,6 @@ void Renderer2D::render()
         glm::vec2 coord = cell_coords[i];
         float density   = smoke_density[i];
         glm::vec3 color = glm::vec3(density, density, density); // Grayscale based on density
-        
-        if (density != 0.0f)
-        {
-            std::cout << "Coord with density (" << i << ") = "<< density << " : (" << coord.x << ", " << coord.y << ")" << std::endl;
-        }
 
         grid_cpu_geom_.position.push_back(glm::vec3(coord.x - cell_size / 2, coord.y - cell_size / 2, 0.0f));
         grid_cpu_geom_.position.push_back(glm::vec3(coord.x + cell_size / 2, coord.y - cell_size / 2, 0.0f));
@@ -106,6 +161,8 @@ void Renderer2D::render()
     }
 
     grid_gpu_geom_.uploadGeometry(grid_cpu_geom_);
+
+    glUseProgram(shader_program_);
 
     // Bind the VAO and draw the grid, and then unbind it
     grid_gpu_geom_.bindVAO();
@@ -130,4 +187,20 @@ void Renderer2D::cleanup()
 GLFWwindow* Renderer2D::getWindow()
 {
     return window_;
+}
+
+std::string Renderer2D::readShaderFile(const std::string &file_path)
+{
+    std::ifstream shader_file(file_path);
+    if (!shader_file.is_open())
+    {
+        std::cerr << "Failed to open shader file: " << file_path << std::endl;
+        exit(-1);
+    }
+
+    std::stringstream shader_stream;
+    shader_stream << shader_file.rdbuf();
+    shader_file.close();
+
+    return shader_stream.str();
 }

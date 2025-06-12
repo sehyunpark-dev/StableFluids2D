@@ -9,6 +9,7 @@ int main()
     Renderer2D *renderer    = new Renderer2D(800, 800, grid, solver);
     
     renderer->initRenderer();
+    renderer->initShader();
     GLFWwindow* window = renderer->getWindow();
     
     while (!glfwWindowShouldClose(window))
