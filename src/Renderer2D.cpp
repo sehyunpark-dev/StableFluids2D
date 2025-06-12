@@ -123,22 +123,14 @@ void Renderer2D::initShader()
     glDeleteShader(fragment_shader);
 }
 
-void Renderer2D::render()
+void Renderer2D::renderSmoke()
 {
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT);
 
     const std::vector<float> &smoke_density     = solver_->getSmokeDensityVector();
     const std::vector<glm::vec2> &cell_coords   = grid_->getCellCoord();
-    float cell_size = 0.01;
-
-    // for (size_t i = 0; i < smoke_density.size(); ++i)
-    // {
-    //     if (smoke_density[i] != 0.0f)
-    //     {
-    //         std::cout << "Smoke Density[" << i << "]: " << smoke_density[i] << std::endl;
-    //     }
-    // }
+    float cell_size = 0.01f;
 
     grid_cpu_geom_.position.clear();
     grid_cpu_geom_.color.clear();

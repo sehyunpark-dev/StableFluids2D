@@ -14,7 +14,7 @@ int main()
     
     while (!glfwWindowShouldClose(window))
     {
-        renderer->render();
+        renderer->renderSmoke();
     }
 
     delete renderer;

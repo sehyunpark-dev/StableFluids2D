@@ -13,11 +13,12 @@ private:
     const int       grid_res_;      // Resolution of the grid
     const glm::vec2 grid_center_;   // Center of the grid in world coordinates
     const float     dx_;
-    const float     dt_ = 0.03f;     // Time step for the simulation
+    const float     dt_ = 0.03f;    // Time step for the simulation
+    bool            isSimulating_ = false;
 
     // Physical properties of the fluid (Constants)
     const float density_   = 1.225f;    // Density(rho) at the cell center
-    const float viscosity_ = 0.01f;     // Viscosity of the fluid
+    const float viscosity_ = 1e-6f;     // Viscosity of the fluid
 
     // For Boundary conditions
     const glm::vec2 solid_wall_max_;    // Maximum coordinates of the solid wall (max_x, max_y)
@@ -32,25 +33,37 @@ private:
     // Physical quantities of each cell (size : height * width)
     std::vector<float>     pressure_;   // Pressure(p) at the cell center
     std::vector<glm::vec2> velocity_;   // Velocity(u) at the cell center
-    std::vector<glm::vec2> body_forces_; // Body forces(f) at the cell center (e.g. gravity)
     
     // Smoke density of each sell (size : height * width, Range [0, 1])
     // This is used to visualize the smoke density in the scene
     // It is not a physical quantity, but a visualization aid.
     std::vector<float> smoke_density_;
 
-public:
-    Solver(MACGrid2D *grid, int grid_res, float dx, float dt);
-    ~Solver() = default;
+    // the vector that contains indices of source(smoke) cells
+    std::vector<int> source_idx_;
 
-    void initScene();
+    
 
     void addBodyForce();
     void advect();
     void diffuse();
     void project();
+    void setBoundaryCondition();
+
+    glm::vec2 getVelocity(glm::vec2 &coord);
+    float getSmokeBilerpValue(const glm::vec2 &pos, const std::vector<float> &smoke_vector);
+
+public:
+    Solver(MACGrid2D *grid, int grid_res, float dx, float dt);
+    ~Solver() = default;
+
+    void initScene();
+    void step();
+    void reset();
     
     // Getters & Setters
+
+    std::vector<float> &getSmokeDensityVector();
 
     inline float getU(int x, int y) const
     {
@@ -89,11 +102,6 @@ public:
             std::cerr << "[Error] Invalid Pressure index" << std::endl;
             return -1;
         }
-    }
-
-    std::vector<float>& getSmokeDensityVector()
-    {
-        return smoke_density_;
     }
 
     inline void setU(int x, int y, float val)

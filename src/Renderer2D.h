@@ -30,7 +30,7 @@ public:
 
     void initRenderer();
     void initShader();
-    void render();
+    void renderSmoke();
     void cleanup();
 
     // Getter for the GLFW window
