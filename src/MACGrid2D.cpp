@@ -132,8 +132,6 @@ int MACGrid2D::getCellIndex(const glm::vec2 &cell_coord) const
     }
     else
     {
-        
-
         std::cerr << "[Error] Invalid cell coordinate : input coord (" << cell_coord.x << ", " << cell_coord.y << ")" << std::endl;
         std::cerr << "Calculated cell idx : (" << x << ", " << y << ")" << std::endl;
         return -1; // Invalid index

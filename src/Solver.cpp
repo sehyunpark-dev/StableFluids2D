@@ -4,15 +4,14 @@
 Solver::Solver(MACGrid2D *grid, int grid_res, float dx, float dt) : 
     grid_(grid), grid_res_(grid->getRes()), grid_center_(grid->getGridCenter()),
     dx_(grid->getCellSize()), dt_(0.03), isSimulating_(false),
-    density_(1.225f), viscosity_(1e-2f),
-    solid_wall_max_(glm::vec2(grid_res_ / 2.0f, grid_res_ / 2.0f) + grid_center_),
-    solid_wall_min_(glm::vec2(-grid_res_ / 2.0f, -grid_res_ / 2.0f) + grid_center_)
+    density_(1.225f), viscosity_(1e-4f)
 {
     u_vec_.resize(grid_res_ * (grid_res_ + 1), 0.0f);
     v_vec_.resize((grid_res_ + 1) * grid_res_, 0.0f);
     
     pressure_vec_.resize(grid_res_ * grid_res_, 0.0f);
-    velocity_vec_.resize(grid_res_ * grid_res_, glm::vec2(0.0f, 0.0f));
+    divergence_vec_.resize(grid_res_ * grid_res_, 0.0f);
+
     smoke_vec_.resize(grid_res_ * grid_res_, 0.0f);
 
     source_idx_.clear();
@@ -54,15 +53,16 @@ void Solver::step()
     if (isSimulating_)
     {
         addBodyForce();
-        setBoundaryCondition();
+        setVelocityBoundaryCondition();
 
         advect();
-        setBoundaryCondition();
+        setVelocityBoundaryCondition();
 
         diffuse();
-        setBoundaryCondition();
+        setVelocityBoundaryCondition();
         
-        // project();
+        project();
+        setVelocityBoundaryCondition();
 
         frame_count_++;
     }
@@ -75,7 +75,7 @@ void Solver::reset()
 
 void Solver::addBodyForce()
 {
-    glm::vec2 source_velocity = glm::vec2(10.0f, 0.0f);
+    glm::vec2 source_velocity = glm::vec2(3.0f, 0.0f);
 
     for (int i : source_idx_)
     {
@@ -150,15 +150,32 @@ void Solver::advect()
 
 void Solver::diffuse()
 {
+    std::vector<float> smoke_new = smoke_vec_;
     std::vector<float> u_new = u_vec_;
     std::vector<float> v_new = v_vec_;
 
-    int iter = 100;
+    int iter = 20;
     float constant = dt_ * viscosity_ * (grid_res_ - 2) * (grid_res_ - 2);
 
     // Gauss-Seidel method
     for (int k = 0; k < iter; k++)
-    {   
+    {
+        // Smoke diffusion
+        for (int y = 1; y < grid_res_ - 1; y++) 
+        {
+            for (int x = 1; x < grid_res_ - 1; x++)
+            {
+                float neighbor_sum = 
+                    smoke_new[y * grid_res_ + (x - 1)] + // left
+                    smoke_new[y * grid_res_ + (x + 1)] + // right
+                    smoke_new[(y - 1) * grid_res_ + x] + // top
+                    smoke_new[(y + 1) * grid_res_ + x];  // bottom
+                
+                int idx = y * grid_res_ + x;
+                smoke_new[idx] = (smoke_vec_[idx] + constant * neighbor_sum) / (1 + 4 * constant);
+            }
+        }
+
         // U diffusion
         for (int y = 1; y < grid_res_ - 1; y++) 
         {
@@ -192,16 +209,89 @@ void Solver::diffuse()
         }
     }
 
+    smoke_vec_ = smoke_new;
     u_vec_ = u_new;
     v_vec_ = v_new;
 }
 
 void Solver::project()
 {
+    pressure_vec_.resize(grid_res_ * grid_res_, 0.0f);
+    divergence_vec_.resize(grid_res_ * grid_res_, 0.0f);
 
+    // 1. Calculate divergence field : ∇⋅u = ∂u/dx + ∂v/dx
+    for (int y = 0; y < grid_res_; y++) 
+    {
+        for (int x = 0; x < grid_res_; x++)
+        {
+            float du = u_vec_[y * (grid_res_ + 1) + (x + 1)] - u_vec_[y * (grid_res_ + 1) + x];
+            float dv = v_vec_[y * grid_res_ + x] - v_vec_[(y + 1) * grid_res_ + x];
+
+            divergence_vec_[y * grid_res_ + x] = (du + dv) / dx_;
+        }
+    }
+
+    // 2. Solve Poisson equation with Gauss-Seidel method : (∇^2)p = ∇⋅u
+    int iter = 100;
+    pressure_vec_.resize(grid_res_ * grid_res_, 0.0f);
+
+    for (int i = 0; i < iter; i++)
+    {
+        for (int y = 1; y < grid_res_ - 1; y++)
+        {
+            for (int x = 1; x < grid_res_ - 1; x++)
+            {
+                float p_right  = pressure_vec_[y * grid_res_ + (x + 1)];
+                float p_left   = pressure_vec_[y * grid_res_ + (x - 1)];
+                float p_top    = pressure_vec_[(y - 1) * grid_res_ + x];
+                float p_bottom = pressure_vec_[(y + 1) * grid_res_ + x];
+
+                float neighbor_sum = p_right + p_left + p_top + p_bottom;
+                
+                pressure_vec_[y * grid_res_ + x] = 
+                    (neighbor_sum - (divergence_vec_[y * grid_res_ + x] * dx_ * dx_)) / 4.0f;
+            }
+        }
+
+        // Apply Neumann boundary condition : ∂p/∂n = 0, 
+        // which means that pressure of boundary cells are equal to their "one neighbor"!
+        for (int y = 0; y < grid_res_; y++) {
+            pressure_vec_[y * grid_res_ + 0] = pressure_vec_[y * grid_res_ + 1]; // Left
+            pressure_vec_[y * grid_res_ + (grid_res_ - 1)] = pressure_vec_[y * grid_res_ + (grid_res_ - 2)]; // Right
+        }
+
+        for (int x = 0; x < grid_res_; x++) {
+            pressure_vec_[0 * grid_res_ + x] = pressure_vec_[1 * grid_res_ + x]; // Top
+            pressure_vec_[(grid_res_ - 1) * grid_res_ + x] = pressure_vec_[(grid_res_ - 2) * grid_res_ + x]; // Bottom
+        }
+    }
+
+    // 3. Correct the velocity component : vel -= (dt/ρ) * ∇p
+    // Let boundary u, v values free - they will be zero in setVelocityBoundaryCondition()
+    for (int y = 0; y < grid_res_; y++) 
+    {
+        for (int x = 1; x < grid_res_; x++)
+        {
+            float p_left   = pressure_vec_[y * grid_res_ + (x - 1)];
+            float p_right  = pressure_vec_[y * grid_res_ + x];
+            float grad_p_x = (p_right - p_left) / dx_;
+            u_vec_[y * (grid_res_ + 1) + x] -= (dt_ / density_) * grad_p_x;
+        }
+    }
+
+    for (int y = 1; y < grid_res_; y++)
+    {
+        for (int x = 0; x < grid_res_; x++)
+        {
+            float p_top    = pressure_vec_[(y - 1) * grid_res_ + x];
+            float p_bottom = pressure_vec_[y * grid_res_ + x];
+            float grad_p_y = (p_top - p_bottom) / dx_;
+            v_vec_[y * grid_res_ + x] -= (dt_ / density_) * grad_p_y;
+        }
+    }
 }
 
-void Solver::setBoundaryCondition()
+void Solver::setVelocityBoundaryCondition()
 {
     // No-stick condition : make velocity ⋅ solid wall normal = 0
     // That is, we need to make u or v component zero!

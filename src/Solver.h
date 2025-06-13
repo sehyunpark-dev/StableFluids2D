@@ -18,11 +18,7 @@ private:
 
     // Physical properties of the fluid (Constants)
     const float density_   = 1.225f;    // Density(rho) at the cell center
-    const float viscosity_ = 1e-2f;     // Viscosity of the fluid
-
-    // For Boundary conditions
-    const glm::vec2 solid_wall_max_;    // Maximum coordinates of the solid wall (max_x, max_y)
-    const glm::vec2 solid_wall_min_;    // Minimum coordinates of the solid wall (min_x, min_y)
+    const float viscosity_ = 1e-6f;     // Viscosity of the fluid
 
     unsigned int frame_count_ = 0; // Frame count for the simulation
 
@@ -30,9 +26,8 @@ private:
     std::vector<float> u_vec_; // the x-component of velocity at the vertical faces (size : height * (width + 1)))
     std::vector<float> v_vec_; // the y-component of velocity at the horizontal faces (size : (height + 1) * width))
     
-    // Physical quantities of each cell (size : height * width)
-    std::vector<float>     pressure_vec_;   // Pressure(p) at the cell center
-    std::vector<glm::vec2> velocity_vec_;   // Velocity(u) at the cell center
+    std::vector<float> pressure_vec_;   // Pressure(p) of each cell
+    std::vector<float> divergence_vec_; // divergence(∇⋅u = ∂u/dx + ∂v/dx) of each cell
     
     // Smoke density of each sell (size : height * width, Range [0, 1])
     // This is used to visualize the smoke density in the scene
@@ -42,20 +37,18 @@ private:
     // the vector that contains indices of source(smoke) cells
     std::vector<int> source_idx_;
 
-    
-
     void addBodyForce();
     void advect();
     void diffuse();
     void project();
-    void setBoundaryCondition();
+    void setVelocityBoundaryCondition();
 
     glm::vec2 getVelocity(const glm::vec2 &pos, 
         const std::vector<float> &u_vec, const std::vector<float> &v_vec);
     float getSmokeBilerpValue(const glm::vec2 &pos, const std::vector<float> &smoke_vector);
     float getUBilerpValue(const glm::vec2 &pos, const std::vector<float> &u);
     float getVBilerpValue(const glm::vec2 &pos, const std::vector<float> &v);
-    
+
 public:
     Solver(MACGrid2D *grid, int grid_res, float dx, float dt);
     ~Solver() = default;
