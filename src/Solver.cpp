@@ -4,16 +4,16 @@
 Solver::Solver(MACGrid2D *grid, int grid_res, float dx, float dt) : 
     grid_(grid), grid_res_(grid->getRes()), grid_center_(grid->getGridCenter()),
     dx_(grid->getCellSize()), dt_(0.03), isSimulating_(false),
-    density_(1.225f), viscosity_(1e-6f),
+    density_(1.225f), viscosity_(1e-2f),
     solid_wall_max_(glm::vec2(grid_res_ / 2.0f, grid_res_ / 2.0f) + grid_center_),
     solid_wall_min_(glm::vec2(-grid_res_ / 2.0f, -grid_res_ / 2.0f) + grid_center_)
 {
-    u_.resize(grid_res_ * (grid_res_ + 1), 0.0f);
-    v_.resize((grid_res_ + 1) * grid_res_, 0.0f);
+    u_vec_.resize(grid_res_ * (grid_res_ + 1), 0.0f);
+    v_vec_.resize((grid_res_ + 1) * grid_res_, 0.0f);
     
-    pressure_.resize(grid_res_ * grid_res_, 0.0f);
-    velocity_.resize(grid_res_ * grid_res_, glm::vec2(0.0f, 0.0f));
-    smoke_density_.resize(grid_res_ * grid_res_, 0.0f);
+    pressure_vec_.resize(grid_res_ * grid_res_, 0.0f);
+    velocity_vec_.resize(grid_res_ * grid_res_, glm::vec2(0.0f, 0.0f));
+    smoke_vec_.resize(grid_res_ * grid_res_, 0.0f);
 
     source_idx_.clear();
 
@@ -28,20 +28,25 @@ void Solver::initScene()
     int source_center_idx_x = source_center_idx % grid_res_;
     int source_center_idx_y = source_center_idx / grid_res_;
 
-    for (int i = -2; i <= 2; i++)
+    for (int i = -5; i <= 5; i++)
     {
-        for (int j = -2; j <= 2; j++)
+        for (int j = -5; j <= 5; j++)
         {
             int x = source_center_idx_x + i;
             int y = source_center_idx_y + j;
             if (0 <= x && x < grid_res_ && 0 <= y && y < grid_res_)
             {
                 // Set smoke density to 1.0 in the source area
-                smoke_density_[y * grid_res_ + x] = 1.0f;
+                smoke_vec_[y * grid_res_ + x] = 1.0f;
                 source_idx_.push_back(y * grid_res_ + x);
             }
         }
     }
+}
+
+void Solver::processSimulator()
+{
+    isSimulating_ = true;
 }
 
 void Solver::step()
@@ -52,10 +57,14 @@ void Solver::step()
         setBoundaryCondition();
 
         advect();
-
+        setBoundaryCondition();
 
         diffuse();
-        project();
+        setBoundaryCondition();
+        
+        // project();
+
+        frame_count_++;
     }
 }
 
@@ -71,38 +80,120 @@ void Solver::addBodyForce()
     for (int i : source_idx_)
     {
         // Keep smoke density in the source 1.0
-        smoke_density_[i] = 1.0f;
+        smoke_vec_[i] = 1.0f;
 
         int x = i % grid_res_;
         int y = i / grid_res_;
 
-        u_[y * (grid_res_ + 1) + x] += source_velocity.x * dt_;
-        u_[y * (grid_res_ + 1) + (x + 1)] += source_velocity.x * dt_;
-        v_[y * grid_res_ + x] += source_velocity.y * dt_;
-        v_[(y + 1) * grid_res_ + x] += source_velocity.y * dt_;
+        u_vec_[y * (grid_res_ + 1) + x] += source_velocity.x * dt_;
+        u_vec_[y * (grid_res_ + 1) + (x+1)] += source_velocity.x * dt_;
+        v_vec_[y * grid_res_ + x] += source_velocity.y * dt_;
+        v_vec_[(y+1) * grid_res_ + x] += source_velocity.y * dt_;
     }
 }
 
 void Solver::advect()
 {
-    std::vector<float> u_new = u_;
-    std::vector<float> v_new = v_;
-    std::vector<float> smoke_density_new = smoke_density_;
+    std::vector<float> u_new = u_vec_;
+    std::vector<float> v_new = v_vec_;
+    std::vector<float> smoke_new = smoke_vec_;
     
-    // Advect smoke density
+    // Advect smoke
     for (int y = 0; y < grid_res_; y++)
     {
         for (int x = 0; x < grid_res_; x++)
         {
             glm::vec2 cell_coord = grid_->getCellCoord(x, y);
-            glm::vec2 cur_velocity = getVelocity(cell_coord);
+            glm::vec2 cur_velocity = getVelocity(cell_coord, u_vec_, v_vec_);
+            
+            glm::vec2 prev_coord = cell_coord - cur_velocity * dt_;
+            float prev_smoke = getSmokeBilerpValue(prev_coord, smoke_vec_);
+
+            smoke_new[y * grid_res_ + x] = prev_smoke;
         }
     }
+
+    // Advect U
+    for (int y = 0; y < grid_res_; y++)
+    {
+        for (int x = 0; x < grid_res_ + 1; x++)
+        {
+            glm::vec2 u_coord = grid_->getUCoord(x, y);
+            glm::vec2 cur_velocity = getVelocity(u_coord, u_vec_, v_vec_);
+
+            glm::vec2 prev_coord = u_coord - cur_velocity * dt_;
+            float prev_u = getUBilerpValue(prev_coord, u_vec_);
+
+            u_new[y * (grid_res_ + 1) + x] = prev_u;
+        }
+    }
+    
+    // Advect V
+    for (int y = 0; y < grid_res_ + 1; y++)
+    {
+        for (int x = 0; x < grid_res_; x++)
+        {
+            glm::vec2 v_coord = grid_->getVCoord(x, y);
+            glm::vec2 cur_velocity = getVelocity(v_coord, u_vec_, v_vec_);
+
+            glm::vec2 prev_coord = v_coord - cur_velocity * dt_;
+            float prev_v = getVBilerpValue(prev_coord, v_vec_);
+
+            v_new[y * grid_res_ + x] = prev_v;
+        }
+    }
+
+    smoke_vec_ = smoke_new;
+    u_vec_ = u_new;
+    v_vec_ = v_new;
 }
 
 void Solver::diffuse()
 {
+    std::vector<float> u_new = u_vec_;
+    std::vector<float> v_new = v_vec_;
 
+    int iter = 100;
+    float constant = dt_ * viscosity_ * (grid_res_ - 2) * (grid_res_ - 2);
+
+    // Gauss-Seidel method
+    for (int k = 0; k < iter; k++)
+    {   
+        // U diffusion
+        for (int y = 1; y < grid_res_ - 1; y++) 
+        {
+            for (int x = 1; x < grid_res_; x++)
+            {
+                float neighbor_sum = 
+                    u_new[y * (grid_res_ + 1) + (x - 1)] + // left
+                    u_new[y * (grid_res_ + 1) + (x + 1)] + // right
+                    u_new[(y - 1) * (grid_res_ + 1) + x] + // top
+                    u_new[(y + 1) * (grid_res_ + 1) + x];  // bottom
+                
+                int idx = y * (grid_res_ + 1) + x;
+                u_new[idx] = (u_vec_[idx] + constant * neighbor_sum) / (1 + 4 * constant);
+            }
+        }
+
+        // V diffusion
+        for (int y = 1; y < grid_res_; y++)
+        {
+            for (int x = 1; x < grid_res_ - 1; x++)
+            {
+                float neighbor_sum = 
+                    v_new[y * grid_res_ + (x - 1)] + // left
+                    v_new[y * grid_res_ + (x + 1)] + // right
+                    v_new[(y - 1) * grid_res_ + x] + // top
+                    v_new[(y + 1) * grid_res_ + x];  // bottom
+
+                int idx = y * grid_res_ + x;
+                v_new[idx] = (v_vec_[idx] + constant * neighbor_sum) / (1 + 4 * constant);
+            }
+        }
+    }
+
+    u_vec_ = u_new;
+    v_vec_ = v_new;
 }
 
 void Solver::project()
@@ -117,80 +208,150 @@ void Solver::setBoundaryCondition()
     
     for (int x = 0; x < grid_res_; x++)
     {
-        v_[0 * grid_res_ + x] = 0.0f;           // Top wall
-        v_[grid_res_ * grid_res_ + x] = 0.0f;   // Bottom wall
+        v_vec_[0 * grid_res_ + x] = 0.0f;           // Top wall
+        v_vec_[grid_res_ * grid_res_ + x] = 0.0f;   // Bottom wall
     }
 
     for (int y = 0; y < grid_res_; y++)
     {
-        u_[y * (grid_res_ + 1) + 0] = 0.0f;         // Left wall
-        u_[y * (grid_res_ + 1) + grid_res_] = 0.0f; // Right wall
+        u_vec_[y * (grid_res_ + 1) + 0] = 0.0f;         // Left wall
+        u_vec_[y * (grid_res_ + 1) + grid_res_] = 0.0f; // Right wall
     }
 }
 
-std::vector<float> &Solver::getSmokeDensityVector()
+glm::vec2 Solver::getVelocity(const glm::vec2 &pos, 
+    const std::vector<float> &u_vec, const std::vector<float> &v_vec)
 {
-    return smoke_density_;
-}
-
-glm::vec2 Solver::getVelocity(glm::vec2 &coord)
-{
-    
+    float u = getUBilerpValue(pos, u_vec);
+    float v = getVBilerpValue(pos, v_vec);
+    return glm::vec2(u, v);
 }
 
 float Solver::getSmokeBilerpValue(const glm::vec2 &pos, const std::vector<float> &smoke_vector)
 {
     int idx = grid_->getCellIndex(pos);
     int x = idx % grid_res_;
-    int y = idx % grid_res_;
+    int y = idx / grid_res_;
+
+    // pick the base cell which is located on the "left upper"
+    int base_x = x;
+    int base_y = y;
 
     glm::vec2 cell_center = grid_->getCellCoord(x, y);
     glm::vec2 diff = pos - cell_center;
 
-    
-    float neighbors[4];
-    
-    // For boundary condition...
-    int x_plus  = x == grid_res_ ? x : x+1;
-    int x_minus = x == 0         ? 0 : x-1;
-    int y_plus  = y == grid_res_ ? y : y+1;
-    int y_minus = y == 0         ? 0 : y-1;
-    
-    if (diff.x >= 0 && diff.y >= 0)     // the pos is located in the right lower
-    {
-        neighbors[0] = smoke_vector[y * grid_res_ + x];
-        neighbors[1] = smoke_vector[y * grid_res_ + x+1];
-        neighbors[2] = smoke_vector[(y+1) * grid_res_ + x];
-        neighbors[3] = smoke_vector[(y+1) * grid_res_ + x+1];
-    }
-    else if (diff.x >= 0 && diff.y < 0) // the pos is located in the right upper
-    {
-        neighbors[0] = smoke_vector[y * grid_res_ + x];
-        neighbors[1] = smoke_vector[y * grid_res_ + x+1];
-        neighbors[2] = smoke_vector[(y-1) * grid_res_ + x];
-        neighbors[3] = smoke_vector[(y-1) * grid_res_ + x+1];
-    }
-    else if (diff.x < 0 && diff.y >= 0) // the pos is located in the left lower
-    {
-        neighbors[0] = smoke_vector[y * grid_res_ + x];
-        neighbors[1] = smoke_vector[y * grid_res_ + x-1];
-        neighbors[2] = smoke_vector[(y+1) * grid_res_ + x];
-        neighbors[3] = smoke_vector[(y+1) * grid_res_ + x-1];
-    }
-    else                                // the pos is located in the left upper
-    {
-        neighbors[0] = smoke_vector[y * grid_res_ + x];
-        neighbors[1] = smoke_vector[y * grid_res_ + x-1];
-        neighbors[2] = smoke_vector[(y-1) * grid_res_ + x];
-        neighbors[3] = smoke_vector[(y-1) * grid_res_ + x-1];
-    }
+    if (diff.x < 0) { base_x = x - 1; }
+    if (diff.y > 0) { base_y = y - 1; }
 
-    float x_frac = diff.x / dx_;
-    float y_frac = diff.y / dx_;
+    // Deal with the boundary condition
+    base_x = glm::clamp(base_x, 0, grid_res_ - 1);
+    base_y = glm::clamp(base_y, 0, grid_res_ - 1);
+    
+    int x_l = base_x;                              // Left x
+    int x_r = glm::min(base_x + 1, grid_res_ - 1); // Right x
+    int y_t = base_y;                              // Top y
+    int y_b = glm::min(base_y + 1, grid_res_ - 1); // Bottom y
 
-    float sx_0 = (1.0f - x_frac) * neighbors[0] + x_frac * neighbors[1];
-    float sx_1 = (1.0f - x_frac) * neighbors[2] + x_frac * neighbors[3];
-    float val = (1.0f - y_frac) * sx_0 + y_frac * sx_1;
+    float smoke_tl = smoke_vector[y_t * grid_res_ + x_l]; // Top-Left smoke value
+    float smoke_tr = smoke_vector[y_t * grid_res_ + x_r]; // Top-Right smoke value
+    float smoke_bl = smoke_vector[y_b * grid_res_ + x_l]; // Bottom-Left smoke value
+    float smoke_br = smoke_vector[y_b * grid_res_ + x_r]; // Bottom-Right smoke value
+
+    glm::vec2 tl_pos = grid_->getCellCoord(x_l, y_t);
+    float tx = (pos.x - tl_pos.x) / dx_;
+    float ty = (pos.y - tl_pos.y) / dx_;
+    tx = glm::clamp(tx, 0.0f, 1.0f);
+    ty = glm::clamp(ty, 0.0f, 1.0f);
+
+    float val_top    = (1.0f - tx) * smoke_tl + tx * smoke_tr;
+    float val_bottom = (1.0f - tx) * smoke_bl + tx * smoke_br;
+    float val = (1.0f - ty) * val_top + ty * val_bottom;
+
+    return val;
+}
+
+float Solver::getUBilerpValue(const glm::vec2 &pos, const std::vector<float> &u_vec)
+{
+    int idx = grid_->getUIndex(pos);
+    int x = idx % (grid_res_ + 1);
+    int y = idx / (grid_res_ + 1);
+
+    // pick the base u index which is located on the "left upper"
+    int base_x = x;
+    int base_y = y;
+
+    glm::vec2 u_pos = grid_->getUCoord(x, y);
+    glm::vec2 diff = pos - u_pos;
+
+    if (diff.x < 0) { base_x = x - 1; }
+    if (diff.y > 0) { base_y = y - 1; }
+
+    // Deal with the boundary condition
+    base_x = glm::clamp(base_x, 0, grid_res_);
+    base_y = glm::clamp(base_y, 0, grid_res_ - 1);
+
+    int x_l = base_x;
+    int x_r = glm::min(base_x + 1, grid_res_);
+    int y_t = base_y;
+    int y_b = glm::min(base_y + 1, grid_res_ - 1);
+
+    float u_tl = u_vec[y_t * (grid_res_ + 1) + x_l]; // Top-Left u value
+    float u_tr = u_vec[y_t * (grid_res_ + 1) + x_r]; // Top-Right u value
+    float u_bl = u_vec[y_b * (grid_res_ + 1) + x_l]; // Bottom-Left u value
+    float u_br = u_vec[y_b * (grid_res_ + 1) + x_r]; // Bottom-Right u value
+
+    glm::vec2 tl_pos = grid_->getUCoord(x_l, y_t);
+    float tx = (pos.x - tl_pos.x) / dx_;
+    float ty = (pos.y - tl_pos.y) / dx_;
+    tx = glm::clamp(tx, 0.0f, 1.0f);
+    ty = glm::clamp(ty, 0.0f, 1.0f);
+
+    float val_top    = (1.0f - tx) * u_tl + tx * u_tr;
+    float val_bottom = (1.0f - tx) * u_bl + tx * u_br;
+    float val = (1.0f - ty) * val_top + ty * val_bottom;
+
+    return val;
+}
+
+float Solver::getVBilerpValue(const glm::vec2 &pos, const std::vector<float> &v_vec)
+{
+    int idx = grid_->getVIndex(pos);
+    int x = idx % grid_res_;
+    int y = idx / grid_res_;
+
+    // pick the base v index which is located on the "left upper"
+    int base_x = x;
+    int base_y = y;
+
+    glm::vec2 v_pos = grid_->getVCoord(x, y);
+    glm::vec2 diff = pos - v_pos;
+
+    if (diff.x < 0) { base_x = x - 1; }
+    if (diff.y > 0) { base_y = y - 1; }
+
+    // Deal with the boundary condition
+    base_x = glm::clamp(base_x, 0, grid_res_ - 1);
+    base_y = glm::clamp(base_y, 0, grid_res_);
+
+    int x_l = base_x;
+    int x_r = glm::min(base_x + 1, grid_res_ - 1);
+    int y_t = base_y;
+    int y_b = glm::min(base_y + 1, grid_res_);
+
+    float v_tl = v_vec[y_t * grid_res_ + x_l]; // Top-Left v value
+    float v_tr = v_vec[y_t * grid_res_ + x_r]; // Top-Right v value
+    float v_bl = v_vec[y_b * grid_res_ + x_l]; // Bottom-Left v value
+    float v_br = v_vec[y_b * grid_res_ + x_r]; // Bottom-Right v value
+
+    glm::vec2 tl_pos = grid_->getVCoord(x_l, y_t);
+    float tx = (pos.x - tl_pos.x) / dx_;
+    float ty = (pos.y - tl_pos.y) / dx_;
+    tx = glm::clamp(tx, 0.0f, 1.0f);
+    ty = glm::clamp(ty, 0.0f, 1.0f);
+
+    float val_top    = (1.0f - tx) * v_tl + tx * v_tr;
+    float val_bottom = (1.0f - tx) * v_bl + tx * v_br;
+    float val = (1.0f - ty) * val_top + ty * val_bottom;
 
     return val;
 }

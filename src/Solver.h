@@ -18,7 +18,7 @@ private:
 
     // Physical properties of the fluid (Constants)
     const float density_   = 1.225f;    // Density(rho) at the cell center
-    const float viscosity_ = 1e-6f;     // Viscosity of the fluid
+    const float viscosity_ = 1e-2f;     // Viscosity of the fluid
 
     // For Boundary conditions
     const glm::vec2 solid_wall_max_;    // Maximum coordinates of the solid wall (max_x, max_y)
@@ -27,17 +27,17 @@ private:
     unsigned int frame_count_ = 0; // Frame count for the simulation
 
     // Velocity of cell faces (not cell centers!)
-    std::vector<float> u_; // the x-component of velocity at the vertical faces (size : height * (width + 1)))
-    std::vector<float> v_; // the y-component of velocity at the horizontal faces (size : (height + 1) * width))
+    std::vector<float> u_vec_; // the x-component of velocity at the vertical faces (size : height * (width + 1)))
+    std::vector<float> v_vec_; // the y-component of velocity at the horizontal faces (size : (height + 1) * width))
     
     // Physical quantities of each cell (size : height * width)
-    std::vector<float>     pressure_;   // Pressure(p) at the cell center
-    std::vector<glm::vec2> velocity_;   // Velocity(u) at the cell center
+    std::vector<float>     pressure_vec_;   // Pressure(p) at the cell center
+    std::vector<glm::vec2> velocity_vec_;   // Velocity(u) at the cell center
     
     // Smoke density of each sell (size : height * width, Range [0, 1])
     // This is used to visualize the smoke density in the scene
     // It is not a physical quantity, but a visualization aid.
-    std::vector<float> smoke_density_;
+    std::vector<float> smoke_vec_;
 
     // the vector that contains indices of source(smoke) cells
     std::vector<int> source_idx_;
@@ -50,26 +50,33 @@ private:
     void project();
     void setBoundaryCondition();
 
-    glm::vec2 getVelocity(glm::vec2 &coord);
+    glm::vec2 getVelocity(const glm::vec2 &pos, 
+        const std::vector<float> &u_vec, const std::vector<float> &v_vec);
     float getSmokeBilerpValue(const glm::vec2 &pos, const std::vector<float> &smoke_vector);
-
+    float getUBilerpValue(const glm::vec2 &pos, const std::vector<float> &u);
+    float getVBilerpValue(const glm::vec2 &pos, const std::vector<float> &v);
+    
 public:
     Solver(MACGrid2D *grid, int grid_res, float dx, float dt);
     ~Solver() = default;
 
     void initScene();
+    void processSimulator();
     void step();
     void reset();
     
     // Getters & Setters
 
-    std::vector<float> &getSmokeDensityVector();
+    inline std::vector<float> &getSmokeVector()
+    {
+        return smoke_vec_;
+    }
 
     inline float getU(int x, int y) const
     {
         if (0 <= y && y < grid_res_ && 0 <= x && x < (grid_res_ + 1))
         {
-            return u_[y * (grid_res_ + 1) + x];
+            return u_vec_[y * (grid_res_ + 1) + x];
         }
         else
         {
@@ -82,7 +89,7 @@ public:
     {
         if (0 <= y && y < (grid_res_ + 1) && 0 <= x && x < grid_res_)
         {
-            return v_[y * grid_res_ + x];
+            return v_vec_[y * grid_res_ + x];
         }
         else
         {
@@ -95,7 +102,7 @@ public:
     {
         if (0 <= y && y < grid_res_ && 0 <= x && x < grid_res_)
         {
-            return pressure_[y * grid_res_ + x];
+            return pressure_vec_[y * grid_res_ + x];
         }
         else
         {
@@ -108,7 +115,7 @@ public:
     {
         if (0 <= y && y < grid_res_ && 0 <= x && x < (grid_res_ + 1))
         {
-            u_[y * (grid_res_ + 1) + x] = val;
+            u_vec_[y * (grid_res_ + 1) + x] = val;
         }
         else
         {
@@ -120,7 +127,7 @@ public:
     {
         if (0 <= y && y < (grid_res_ + 1) && 0 <= x && x < grid_res_)
         {
-            v_[y * grid_res_ + x] = val;
+            v_vec_[y * grid_res_ + x] = val;
         }
         else
         {
@@ -132,12 +139,17 @@ public:
     {
         if (0 <= y && y < grid_res_ && 0 <= x && x < grid_res_)
         {
-            pressure_[y * grid_res_ + x] = val;
+            pressure_vec_[y * grid_res_ + x] = val;
         }
         else
         {
             std::cerr << "[Error] Invalid Pressure index" << std::endl;
         }
+    }
+
+    inline unsigned int getFrameCount()
+    {
+        return frame_count_;
     }
 };
 

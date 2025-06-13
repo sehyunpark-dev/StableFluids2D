@@ -14,6 +14,8 @@ private:
     float cell_size_    = 0.01f; // Size of each cell in the grid (e.g. 0.01))
 
     glm::vec2 grid_center_ = {0.0f, 0.0f};
+    glm::vec2 grid_min_ = {0.0f, 0.0f};
+    glm::vec2 grid_max_ = {0.0f, 0.0f};
 
     std::vector<glm::vec2> cell_coord_; // Coordinates of each cell center (size : height * width)
     std::vector<glm::vec2> u_coord_;    // Coordinates of each u face center (size : height * (width + 1))
