@@ -126,16 +126,7 @@ int MACGrid2D::getCellIndex(const glm::vec2 &cell_coord) const
     x = glm::clamp(x, 0, res_ - 1);
     y = glm::clamp(y, 0, res_ - 1);
 
-    if (0 <= y && y < res_ && 0 <= x && x < res_)
-    {
-        return y * res_ + x;
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid cell coordinate : input coord (" << cell_coord.x << ", " << cell_coord.y << ")" << std::endl;
-        std::cerr << "Calculated cell idx : (" << x << ", " << y << ")" << std::endl;
-        return -1; // Invalid index
-    }
+    return y * res_ + x;
 }
 
 int MACGrid2D::getUIndex(const glm::vec2 &u_coord) const
@@ -148,16 +139,7 @@ int MACGrid2D::getUIndex(const glm::vec2 &u_coord) const
     x = glm::clamp(x, 0, res_);
     y = glm::clamp(y, 0, res_ - 1);
 
-    if (0 <= y && y < res_ && 0 <= x && x < (res_ + 1))
-    {
-        return y * (res_ + 1) + x;
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid U coordinate : input coord (" << u_coord.x << ", " << u_coord.y << ")" << std::endl;
-        std::cerr << "Calculated U idx : (" << x << ", " << y << ")" << std::endl;
-        return -1; // Invalid index
-    }
+    return y * (res_ + 1) + x;
 }
 
 int MACGrid2D::getVIndex(const glm::vec2 &v_coord) const
@@ -169,15 +151,6 @@ int MACGrid2D::getVIndex(const glm::vec2 &v_coord) const
 
     x = glm::clamp(x, 0, res_ - 1);
     y = glm::clamp(y, 0, res_);
-
-    if (0 <= y && y < (res_ + 1) && 0 <= x && x < res_)
-    {
-        return y * res_ + x;
-    }
-    else
-    {
-        std::cerr << "[Error] Invalid V coordinate : input coord (" << v_coord.x << ", " << v_coord.y << ")" << std::endl;
-        std::cerr << "Calculated V idx : (" << x << ", " << y << ")" << std::endl;
-        return -1; // Invalid index
-    }
+        
+    return y * res_ + x;
 }

@@ -4,7 +4,7 @@
 Solver::Solver(MACGrid2D *grid, int grid_res, float dx, float dt) : 
     grid_(grid), grid_res_(grid->getRes()), grid_center_(grid->getGridCenter()),
     dx_(grid->getCellSize()), dt_(0.03), isSimulating_(false),
-    density_(1.225f), viscosity_(1e-4f)
+    density_(1.225f), viscosity_(1e-6f)
 {
     u_vec_.resize(grid_res_ * (grid_res_ + 1), 0.0f);
     v_vec_.resize((grid_res_ + 1) * grid_res_, 0.0f);
@@ -155,7 +155,7 @@ void Solver::diffuse()
     std::vector<float> v_new = v_vec_;
 
     int iter = 20;
-    float constant = dt_ * viscosity_ * (grid_res_ - 2) * (grid_res_ - 2);
+    float constant = dt_ * viscosity_ / (dx_ * dx_);
 
     // Gauss-Seidel method
     for (int k = 0; k < iter; k++)
@@ -232,7 +232,7 @@ void Solver::project()
     }
 
     // 2. Solve Poisson equation with Gauss-Seidel method : (∇^2)p = ∇⋅u
-    int iter = 100;
+    int iter = 20;
     pressure_vec_.resize(grid_res_ * grid_res_, 0.0f);
 
     for (int i = 0; i < iter; i++)
@@ -349,7 +349,7 @@ float Solver::getSmokeBilerpValue(const glm::vec2 &pos, const std::vector<float>
 
     glm::vec2 tl_pos = grid_->getCellCoord(x_l, y_t);
     float tx = (pos.x - tl_pos.x) / dx_;
-    float ty = (pos.y - tl_pos.y) / dx_;
+    float ty = (tl_pos.y - pos.y) / dx_;
     tx = glm::clamp(tx, 0.0f, 1.0f);
     ty = glm::clamp(ty, 0.0f, 1.0f);
 
@@ -392,7 +392,7 @@ float Solver::getUBilerpValue(const glm::vec2 &pos, const std::vector<float> &u_
 
     glm::vec2 tl_pos = grid_->getUCoord(x_l, y_t);
     float tx = (pos.x - tl_pos.x) / dx_;
-    float ty = (pos.y - tl_pos.y) / dx_;
+    float ty = (tl_pos.y - pos.y) / dx_;
     tx = glm::clamp(tx, 0.0f, 1.0f);
     ty = glm::clamp(ty, 0.0f, 1.0f);
 
@@ -435,7 +435,7 @@ float Solver::getVBilerpValue(const glm::vec2 &pos, const std::vector<float> &v_
 
     glm::vec2 tl_pos = grid_->getVCoord(x_l, y_t);
     float tx = (pos.x - tl_pos.x) / dx_;
-    float ty = (pos.y - tl_pos.y) / dx_;
+    float ty = (tl_pos.y - pos.y) / dx_;
     tx = glm::clamp(tx, 0.0f, 1.0f);
     ty = glm::clamp(ty, 0.0f, 1.0f);
 
