@@ -128,9 +128,9 @@ void Renderer2D::renderSmoke()
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT);
 
-    const std::vector<float> &smoke_density     = solver_->getSmokeVector();
-    const std::vector<glm::vec2> &cell_coords   = grid_->getCellCoord();
-    float cell_size = 0.01f;
+    const std::vector<float> &smoke_density   = solver_->getSmokeVector();
+    const std::vector<glm::vec2> &cell_coords = grid_->getCellCoord();
+    float cell_size = grid_->getCellSize();
 
     grid_cpu_geom_.position.clear();
     grid_cpu_geom_.color.clear();

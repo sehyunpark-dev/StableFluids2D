@@ -12,14 +12,39 @@ int main()
     renderer->initShader();
     GLFWwindow* window = renderer->getWindow();
 
-    solver->processSimulator();
+    bool isSpacePressedLastFrame = false;
+    bool isRPressedLastFrame = false;
     
     while (!glfwWindowShouldClose(window))
     {
-        solver->step();
-        renderer->renderSmoke();
+        bool isSpacePressedNow = (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS);
+        bool isRPressedNow = (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS);
 
-        // std::cout << "Frame : " << solver->getFrameCount() << std::endl;
+        if (isSpacePressedNow && !isSpacePressedLastFrame)
+        {
+            if (solver->getIsSimulating()) 
+            {
+                solver->deactiveSimulation();
+            }
+            else
+            {
+                solver->activeSimulation();
+            }
+        }
+        if (isRPressedNow && !isRPressedLastFrame)
+        {
+            solver->reset();
+        }
+
+        isSpacePressedLastFrame = isSpacePressedNow;
+        isRPressedLastFrame = isRPressedNow;
+
+        if (solver->getIsSimulating())
+        {
+            solver->step();
+        }
+
+        renderer->renderSmoke();
     }
 
     delete renderer;

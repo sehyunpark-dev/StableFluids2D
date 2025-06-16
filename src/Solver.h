@@ -69,6 +69,21 @@ public:
     {
         return frame_count_;
     }
+
+    inline bool getIsSimulating()
+    {
+        return isSimulating_;
+    }
+
+    inline void activeSimulation()
+    {
+        isSimulating_ = true;
+    }
+
+    inline void deactiveSimulation()
+    {
+        isSimulating_ = false;
+    }
 };
 
 #endif

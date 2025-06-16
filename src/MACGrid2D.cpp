@@ -4,9 +4,9 @@
 MACGrid2D::MACGrid2D(int res, float cell_size) : res_(res), cell_size_(cell_size)
 {
     // Initialize the grid parameters
-    cell_coord_.resize(res_ * res_, glm::vec2(0.0f, 0.0f));
-    u_coord_.resize(res_ * (res_ + 1), glm::vec2(0.0f, 0.0f));
-    v_coord_.resize((res_ + 1) * res_, glm::vec2(0.0f, 0.0f));
+    cell_coord_.assign(res_ * res_, glm::vec2(0.0f, 0.0f));
+    u_coord_.assign(res_ * (res_ + 1), glm::vec2(0.0f, 0.0f));
+    v_coord_.assign((res_ + 1) * res_, glm::vec2(0.0f, 0.0f));
     
     // Set the coordinate of each cell center
     float center_idx = (res_ - 1) / 2.0f;

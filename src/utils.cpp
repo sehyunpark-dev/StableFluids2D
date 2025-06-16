@@ -32,7 +32,7 @@ void GPU_Geometry::uploadGeometry(const CPU_Geometry& cpu_geom)
         GL_ARRAY_BUFFER, 
         cpu_geom.position.size() * sizeof(glm::vec3), 
         cpu_geom.position.data(), 
-        GL_STATIC_DRAW);
+        GL_DYNAMIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
     glEnableVertexAttribArray(0);
 
@@ -42,7 +42,7 @@ void GPU_Geometry::uploadGeometry(const CPU_Geometry& cpu_geom)
         GL_ARRAY_BUFFER, 
         cpu_geom.color.size() * sizeof(glm::vec3), 
         cpu_geom.color.data(), 
-        GL_STATIC_DRAW);
+        GL_DYNAMIC_DRAW);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
     glEnableVertexAttribArray(1);
 
