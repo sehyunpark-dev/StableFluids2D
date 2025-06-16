@@ -1,3 +1,5 @@
+![Simulation](./Simulation.gif)
+
 # 2D Stable Fluids Simulation
 A simple 2D smoke simulation running on the multicore CPU.
 

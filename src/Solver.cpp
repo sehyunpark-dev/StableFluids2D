@@ -1,11 +1,13 @@
 #include "Solver.h"
 #include <cmath>
+#include <iostream>
 #include "omp.h"
 
 Solver::Solver(MACGrid2D *grid, int grid_res, float dx, float dt) : 
     grid_(grid), grid_res_(grid->getRes()), grid_center_(grid->getGridCenter()),
-    dx_(grid->getCellSize()), dt_(0.03), isSimulating_(false),
-    density_(1.225f), viscosity_(1e-6f), frame_count_(0)
+    dx_(grid->getCellSize()), dt_(0.03f), isSimulating_(false),
+    density_(1.225f), viscosity_(1e-5f), cfl_number_(3.0f),
+    frame_count_(0), diffusion_iter_(1), projection_iter_(500)
 {
     initScene();
 }
@@ -26,14 +28,14 @@ void Solver::initScene()
     isSimulating_ = false;
 
     // Add initial smoke to the first frame of the scene
-    glm::vec2 source_center = glm::vec2(-grid_res_ / 4.0f * dx_, 0.0f) + grid_center_;
+    glm::vec2 source_center = glm::vec2(-grid_res_ / 3.0f * dx_, 0.0f) + grid_center_;
     int source_center_idx = grid_->getCellIndex(source_center);
     int source_center_idx_x = source_center_idx % grid_res_;
     int source_center_idx_y = source_center_idx / grid_res_;
 
-    for (int i = -5; i <= 5; i++)
+    for (int i = -4; i <= 4; i++)
     {
-        for (int j = -5; j <= 5; j++)
+        for (int j = -4; j <= 4; j++)
         {
             int x = source_center_idx_x + i;
             int y = source_center_idx_y + j;
@@ -51,6 +53,14 @@ void Solver::step()
 {
     if (isSimulating_)
     {
+        // Get a dynamic time step dt
+        float max_vel = getMaxVelocityComponent();
+        if (max_vel > 1e-7f)
+        {
+            dt_ = cfl_number_ * dx_ / max_vel;
+        }
+        // dt_ = std::min(dt_, 1.0f / 60.0f);
+
         addBodyForce();
         setVelocityBoundaryCondition();
 
@@ -76,7 +86,7 @@ void Solver::reset()
 
 void Solver::addBodyForce()
 {
-    glm::vec2 source_velocity = glm::vec2(3.0f, 0.0f);
+    glm::vec2 source_velocity = glm::vec2(0.01f, 0.0f);
 
     for (int i : source_idx_)
     {
@@ -99,6 +109,8 @@ void Solver::advect()
     std::vector<float> v_new = v_vec_;
     std::vector<float> smoke_new = smoke_vec_;
     
+    float smoke_damping = 0.999;
+
     // Advect smoke
     for (int y = 0; y < grid_res_; y++)
     {
@@ -110,7 +122,7 @@ void Solver::advect()
             glm::vec2 prev_coord = cell_coord - cur_velocity * dt_;
             float prev_smoke = getSmokeBilerpValue(prev_coord, smoke_vec_);
 
-            smoke_new[y * grid_res_ + x] = prev_smoke;
+            smoke_new[y * grid_res_ + x] = prev_smoke * smoke_damping;
         }
     }
 
@@ -165,7 +177,7 @@ void Solver::diffuse()
     std::vector<float> *u_dst = u_heap;
     std::vector<float> *v_dst = v_heap;
 
-    int iter = 1;
+    int iter = diffusion_iter_;
     float constant = dt_ * viscosity_ / (dx_ * dx_);
 
     // Jacobi method
@@ -263,7 +275,7 @@ void Solver::project()
     }
 
     // 2. Solve Poisson equation with Jacobi method : (∇^2)p = ∇⋅u
-    int iter = 200;
+    int iter = projection_iter_;
     pressure_vec_.assign(grid_res_ * grid_res_, 0.0f);
 
     std::vector<float> *pressure_src = &pressure_vec_;
@@ -348,7 +360,7 @@ void Solver::setVelocityBoundaryCondition()
         v_vec_[0 * grid_res_ + x] = 0.0f; // Top wall
         v_vec_[1 * grid_res_ + x] = 0.0f;
         v_vec_[grid_res_       * grid_res_ + x] = 0.0f; // Bottom wall
-        v_vec_[(grid_res_ - 1) * grid_res_ + x] = 0.0f;   
+        v_vec_[(grid_res_ - 1) * grid_res_ + x] = 0.0f;
     }
 
     for (int y = 0; y < grid_res_; y++)
@@ -358,6 +370,20 @@ void Solver::setVelocityBoundaryCondition()
         u_vec_[y * (grid_res_ + 1) + grid_res_]     = 0.0f; // Right wall
         u_vec_[y * (grid_res_ + 1) + grid_res_ - 1] = 0.0f;
     }
+}
+
+float Solver::getMaxVelocityComponent()
+{
+    float max_sq_vel = 0.0f;
+    for (float u : u_vec_)
+    {
+        max_sq_vel = std::max(max_sq_vel, u * u);
+    }
+    for (float v : v_vec_)
+    {
+        max_sq_vel = std::max(max_sq_vel, v * v);
+    }
+    return std::sqrt(max_sq_vel);
 }
 
 glm::vec2 Solver::getVelocity(const glm::vec2 &pos, 

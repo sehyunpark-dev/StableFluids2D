@@ -10,22 +10,26 @@ class Solver
 private:
     // Parameters of the grid and simulation
     const MACGrid2D *grid_;
-    const int       grid_res_;      // Resolution of the grid
-    const glm::vec2 grid_center_;   // Center of the grid in world coordinates
-    const float     dx_;
-    const float     dt_ = 0.03f;    // Time step for the simulation
-    bool            isSimulating_ = false;
+    const int       grid_res_;             // Resolution of the grid
+    const glm::vec2 grid_center_;          // Center of the grid in world coordinates
+    const float     dx_;                   // Cell width and height
+    float     dt_ = 0.03f;                 // Time step for the simulation
+    bool            isSimulating_ = false; // Decide whether the simulation is active or not
 
     // Physical properties of the fluid (Constants)
-    const float density_   = 1.225f;    // Density(rho) at the cell center
-    const float viscosity_ = 1e-6f;     // Viscosity of the fluid
+    const float density_   = 1.225f; // Density(rho) at the cell center
+    const float viscosity_ = 1e-6f;  // Viscosity of the fluid
+    float cfl_number_ = 1.0f;        // CFL Number
 
-    unsigned int frame_count_ = 0; // Frame count for the simulation
+    unsigned int frame_count_     = 0;   // Frame count for the simulation
+    unsigned int diffusion_iter_  = 1;   // The iteration count of Jacobi method in diffusion phase
+    unsigned int projection_iter_ = 500; // The iteration count of Jacobi method in projection phase
 
     // Velocity of cell faces (not cell centers!)
     std::vector<float> u_vec_; // the x-component of velocity at the vertical faces (size : height * (width + 1)))
     std::vector<float> v_vec_; // the y-component of velocity at the horizontal faces (size : (height + 1) * width))
     
+    // Quantities of each cell (at cell centers)
     std::vector<float> pressure_vec_;   // Pressure(p) of each cell
     std::vector<float> divergence_vec_; // divergence(∇⋅u = ∂u/dx + ∂v/dx) of each cell
     
@@ -43,6 +47,7 @@ private:
     void project();
     void setVelocityBoundaryCondition();
 
+    float getMaxVelocityComponent();
     glm::vec2 getVelocity(const glm::vec2 &pos, 
         const std::vector<float> &u_vec, const std::vector<float> &v_vec);
     float getSmokeBilerpValue(const glm::vec2 &pos, const std::vector<float> &smoke_vector);
