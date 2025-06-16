@@ -13,7 +13,7 @@ private:
     const int       grid_res_;             // Resolution of the grid
     const glm::vec2 grid_center_;          // Center of the grid in world coordinates
     const float     dx_;                   // Cell width and height
-    float     dt_ = 0.03f;                 // Time step for the simulation
+    float           dt_ = 0.03f;           // Time step for the simulation
     bool            isSimulating_ = false; // Decide whether the simulation is active or not
 
     // Physical properties of the fluid (Constants)

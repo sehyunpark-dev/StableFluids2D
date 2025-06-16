@@ -6,7 +6,7 @@
 Solver::Solver(MACGrid2D *grid, int grid_res, float dx, float dt) : 
     grid_(grid), grid_res_(grid->getRes()), grid_center_(grid->getGridCenter()),
     dx_(grid->getCellSize()), dt_(0.03f), isSimulating_(false),
-    density_(1.225f), viscosity_(1e-5f), cfl_number_(3.0f),
+    density_(1.225f), viscosity_(1e-6f), cfl_number_(5.0f),
     frame_count_(0), diffusion_iter_(1), projection_iter_(500)
 {
     initScene();
@@ -58,6 +58,7 @@ void Solver::step()
         if (max_vel > 1e-7f)
         {
             dt_ = cfl_number_ * dx_ / max_vel;
+            // std::cout << dt_ << std::endl;
         }
         // dt_ = std::min(dt_, 1.0f / 60.0f);
 
@@ -96,10 +97,10 @@ void Solver::addBodyForce()
         int x = i % grid_res_;
         int y = i / grid_res_;
 
-        u_vec_[y * (grid_res_ + 1) + x]       += source_velocity.x * dt_;
-        u_vec_[y * (grid_res_ + 1) + (x + 1)] += source_velocity.x * dt_;
-        v_vec_[y *       grid_res_ + x]       += source_velocity.y * dt_;
-        v_vec_[(y + 1) * grid_res_ + x]       += source_velocity.y * dt_;
+        u_vec_[y * (grid_res_ + 1) + x]       += source_velocity.x;
+        u_vec_[y * (grid_res_ + 1) + (x + 1)] += source_velocity.x;
+        v_vec_[y *       grid_res_ + x]       += source_velocity.y;
+        v_vec_[(y + 1) * grid_res_ + x]       += source_velocity.y;
     }
 }
 
@@ -112,6 +113,7 @@ void Solver::advect()
     float smoke_damping = 0.999;
 
     // Advect smoke
+    #pragma omp parallel for
     for (int y = 0; y < grid_res_; y++)
     {
         for (int x = 0; x < grid_res_; x++)
@@ -127,6 +129,7 @@ void Solver::advect()
     }
 
     // Advect U
+    #pragma omp parallel for
     for (int y = 0; y < grid_res_; y++)
     {
         for (int x = 0; x < grid_res_ + 1; x++)
@@ -142,6 +145,7 @@ void Solver::advect()
     }
     
     // Advect V
+    #pragma omp parallel for
     for (int y = 0; y < grid_res_ + 1; y++)
     {
         for (int x = 0; x < grid_res_; x++)

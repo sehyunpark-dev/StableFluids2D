@@ -32,7 +32,7 @@ int main()
             double fps = double(nbFrames) / (currentTime - lastTime);
 
             std::stringstream ss;
-            ss << "2D Fluid Solver | " << msPerFrame << " ms/frame (" << fps << " FPS)";
+            ss << "2D Stable Fluid Solver | " << msPerFrame << " ms/frame (" << fps << " FPS)";
             
             glfwSetWindowTitle(window, ss.str().c_str());
 
